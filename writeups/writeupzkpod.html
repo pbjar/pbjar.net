@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+  <title>PeanutButter.jar</title>
+  <meta content="" name="description">
+  <meta content="" name="keywords">
+
+  <!-- Favicons -->
+  <link href="../assets/img/favicon.ico" rel="icon">
+  <link href="../assets/img/apple-touch-icon.png" rel="apple-touch-icon">
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Raleway:300,300i,400,400i,500,500i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i" rel="stylesheet">
+
+  <!-- Vendor CSS Files -->
+  <link href="../assets/vendor/aos/aos.css" rel="stylesheet">
+  <link href="../assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="../assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="../assets/vendor/boxicons/css/boxicons.min.css" rel="stylesheet">
+  <link href="../assets/vendor/glightbox/css/glightbox.min.css" rel="stylesheet">
+  <link href="../assets/vendor/swiper/swiper-bundle.min.css" rel="stylesheet">
+
+  <link href="../assets/css/style.css" rel="stylesheet">
+
+
+</head>
+
+<body>
+
+  <i class="bi bi-list mobile-nav-toggle d-xl-none"></i>
+
+  <header id="header">
+    <div class="d-flex flex-column">
+
+      <div class="profile">
+        <img src="../assets/img/poopy.png" alt="" class="img-fluid rounded-circle">
+        <h1 class="text-light"><a href="index.html">PeanutButter.jar</a></h1>
+        <div class="text-center">
+          <br>
+          <a href="https://ctftime.org/team/78193" class="text"> Our CTFTime (click here)</a>
+        </div>
+      </div>
+
+      <nav id="navbar" class="nav-menu navbar">
+        <ul>
+          <li><a href="../index.html#hero" class="nav-link scrollto active"><i class="bx bx-home"></i> <span>Home</span></a></li>
+          <li><a href="../index.html#descriptions" class="nav-link scrollto"><i class="bx bx-user"></i> <span>Meet the Team</span></a></li>
+          <li><a href="../index.html#events" class="nav-link scrollto"><i class="bx bx-server"></i> <span>Upcoming Events</span></a></li>
+          <li><a href="../index.html#writeups" class="nav-link scrollto"><i class="bx bx-envelope"></i> <span>Writeups</span></a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+
+  <main id="main">
+
+    <section id="breadcrumbs" class="breadcrumbs">
+      <div class="container">
+
+        <div class="d-flex justify-content-between align-items-center">
+          <h2>Writeups</h2>
+          <ol>
+            <li><a href="../index.html">Home</a></li>
+            <li>Writeups</li>
+          </ol>
+        </div>
+
+      </div>
+    </section>
+
+    <section id="portfolio-details" class="portfolio-details">
+      <div class="container">
+          <div class="col-lg-20">
+            <div class="portfolio-info">
+              <h3>Writeup For: ZKPod HSCTF 8</h3>
+            </div>
+            <div class="portfolio-description">
+              <br>
+              <p>
+                I thought this problem was just a troll. Realize that a solution is invalid if a clause has all false-valued literals. If we assume the literal values are completely random, they have a 7/8 chance of being valid. If you ask k random clauses for their values, you have a 1 - (7/8)^k chance of having at least one invalid clause, which is pretty high. This means if you test k clauses and they're all valid, it is likely a valid solution, otherwise it is definitely invalid. You can probably use bayes' theorem for better analysis on the probability of this being correct, but it is an easily guessable problem with little insight :(. 
+              </p>
+              <code style="white-space: pre-line;"> 
+              from pwn import *
+              import random
+
+              #init
+
+              p = remote('zkp.hsc.tf', 1337)
+
+              #vars
+
+              k = 5
+
+              #exploit
+
+              p.recvline()
+
+              t = int(p.recvline(keepends = False))
+
+              print(t)
+
+              for i in range(t):
+                  n = int(p.recvline(keepends = False))
+                  m = int(p.recvline(keepends = False))
+
+                  print(i, n, m)
+
+                  f = True
+                  for i in range(k):
+                      p.sendlineafter(': ', str(random.randint(1, n)))  
+                      if not 'True' in p.recvlineS():
+                          f = False
+                      
+                      p.sendline('next')
+
+                  p.sendlineafter(': ', '1')
+                  if not 'True' in p.recvlineS():
+                      f = False
+
+                  print(f)
+
+                  p.sendline(str(f).lower())
+
+              #pray for flag
+
+              p.interactive()
+            </code>
+            </div>
+          </div>
+      </div>
+    </section>
+
+  </main>
+
+  <a href="#" class="back-to-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
+
+
+  <script src="../assets/vendor/aos/aos.js"></script>
+  <script src="../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="../assets/vendor/glightbox/js/glightbox.min.js"></script>
+  <script src="../assets/vendor/isotope-layout/isotope.pkgd.min.js"></script>
+  <script src="../assets/vendor/php-email-form/validate.js"></script>
+  <script src="../assets/vendor/purecounter/purecounter.js"></script>
+  <script src="../assets/vendor/swiper/swiper-bundle.min.js"></script>
+  <script src="../assets/vendor/typed.js/typed.min.js"></script>
+  <script src="../assets/vendor/waypoints/noframework.waypoints.js"></script>
+
+  <script src="../assets/js/main.js"></script>
+
+</body>
+
+</html>

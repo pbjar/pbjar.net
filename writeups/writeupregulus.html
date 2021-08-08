@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+  <title>PeanutButter.jar</title>
+  <meta content="" name="description">
+  <meta content="" name="keywords">
+
+  <!-- Favicons -->
+  <link href="../assets/img/favicon.ico" rel="icon">
+  <link href="../assets/img/apple-touch-icon.png" rel="apple-touch-icon">
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Raleway:300,300i,400,400i,500,500i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i" rel="stylesheet">
+
+  <!-- Vendor CSS Files -->
+  <link href="../assets/vendor/aos/aos.css" rel="stylesheet">
+  <link href="../assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="../assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="../assets/vendor/boxicons/css/boxicons.min.css" rel="stylesheet">
+  <link href="../assets/vendor/glightbox/css/glightbox.min.css" rel="stylesheet">
+  <link href="../assets/vendor/swiper/swiper-bundle.min.css" rel="stylesheet">
+
+  <link href="../assets/css/style.css" rel="stylesheet">
+
+
+</head>
+
+<body>
+
+  <i class="bi bi-list mobile-nav-toggle d-xl-none"></i>
+
+  <header id="header">
+    <div class="d-flex flex-column">
+
+      <div class="profile">
+        <img src="../assets/img/poopy.png" alt="" class="img-fluid rounded-circle">
+        <h1 class="text-light"><a href="index.html">PeanutButter.jar</a></h1>
+        <div class="text-center">
+          <br>
+          <a href="https://ctftime.org/team/78193" class="text"> Our CTFTime (click here)</a>
+        </div>
+      </div>
+
+      <nav id="navbar" class="nav-menu navbar">
+        <ul>
+          <li><a href="../index.html#hero" class="nav-link scrollto active"><i class="bx bx-home"></i> <span>Home</span></a></li>
+          <li><a href="../index.html#descriptions" class="nav-link scrollto"><i class="bx bx-user"></i> <span>Meet the Team</span></a></li>
+          <li><a href="../index.html#events" class="nav-link scrollto"><i class="bx bx-server"></i> <span>Upcoming Events</span></a></li>
+          <li><a href="../index.html#writeups" class="nav-link scrollto"><i class="bx bx-envelope"></i> <span>Writeups</span></a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+
+  <main id="main">
+
+    <section id="breadcrumbs" class="breadcrumbs">
+      <div class="container">
+
+        <div class="d-flex justify-content-between align-items-center">
+          <h2>Writeups</h2>
+          <ol>
+            <li><a href="../index.html">Home</a></li>
+            <li>Writeups</li>
+          </ol>
+        </div>
+
+      </div>
+    </section>
+
+    <section id="portfolio-details" class="portfolio-details">
+      <div class="container">
+          <div class="col-lg-20">
+            <div class="portfolio-info">
+              <h3>Writeup For: Regulus Calendula HSCTF 8</h3>
+            </div>
+            <div class="portfolio-description">
+              <br>
+              <p style="white-space: pre-line;">
+              In the challenge provided we are given a netcat and a python file with the source code for the challenge. The first option provided will just print out the source code (but the python file is given so :p). The second option will give our public key (our n and e values). The 3rd option is the portion that will give us our flag if we can provide a private key that can decrypt the file the ct properly. The 4th option is the most important one, it allows us to guess hex values of p and q and checks if we got bytes correct. This is found in: https://eprint.iacr.org/2020/1506.pdf (4.31). In that case the author does a dfs bruteforce that checks individual bits and creates a tree of all possible solutions (it is slightly optimized since it discards the options that are wrong every comparison. This is based on the fact that N=pq mod 2^i for every bit. *note: to guess p and q bytes just do go through the hex range (0-15). The rest of the chall is just coding up the solution:
+              </p>
+              <code style="white-space: pre-line;"> from pwn import *
+              Import sys
+              from Crypto.Util.number import inverse
+
+              sys.setrecursionlimit(1000000000000000000000)
+              #init
+
+              p = remote('regulus-calendula.hsc.tf', 1337)
+
+              #funcs
+
+              def guess(a, x):
+                  p.sendlineafter(':', '4')
+                  a = [x if i == -1 else i for i in a]
+                  p.sendlineafter(': ', ''.join(hex(i)[2:] for i in a)) 
+                  s = p.recvlineS(keepends = False)
+                  return [i if j == '1' else -1 for i, j in zip(a, s)]
+
+              def blist(a):
+                  ans=[]
+                  for i in a[::-1]:
+                      for j in range(k):
+                          if i != -1:
+                              ans.append((i >> j) & 1)
+                          elif j == k - 1:
+                              ans.append(1)
+                          else:
+                              ans.append(-1)
+
+                  return ans
+
+
+              def lint(a):
+                  ret = 0
+                  for i in range(len(a)):
+                      ret |= a[i] << i
+                  return ret
+
+              def sol(x, a, b, n):
+                  if (lint(a[:x]) * lint(b[:x]) & ((1 << x) - 1)) != (n & ((1 << x) - 1)):
+                      return False
+                  if x == len(a):
+                      return lint(a) * lint(b) == n
+
+                  ta, tb = a[x] == -1, b[x] == -1
+                  for i in range(2):
+                      for j in range(2):
+                          if (ta or a[x] == i) and (tb or b[x] == j):
+                              a[x], b[x] = i, j
+                              if sol(x + 1, a, b, n):
+                                  return True
+
+                  if ta:
+                      a[x] = -1
+                  if tb:
+                      b[x] = -1
+
+                  return False
+
+              #vars
+
+              m, k, e = 1024, 4, 65537
+
+              a, b = [-1 for i in range(m)], [-1 for i in range(m)]
+
+              #exploit
+
+              #pass pow
+
+              print(p.recvuntilS('?'))
+
+              p.sendline(input('Gimme pow: '))
+
+              #get n
+
+              p.sendlineafter(':', '2')
+              p.recvuntil('= ')
+              n = int(p.recvlineS(keepends = False))
+
+              log.info('n: \n' + hex(n)) 
+
+              #guess digits
+
+              for i in range(1 << (k - 1)):
+                  a = guess(a, i)
+
+              for i in range(1 << (k - 1)):
+                  b = guess(b, i)
+
+              log.info('p guess: \n' + str(a))
+              log.info('q guess: \n' + str(b))
+
+              #turn to correct form
+
+              a, b = blist(a), blist(b)
+
+              #recurse fill in gaps
+
+              if not sol(0, a, b, n):
+                  log.failure('Rip')
+                  print(a)
+                  print(b)
+                  exit(0)
+
+              #get flag
+
+              a, b = lint(a), lint(b)
+
+              d = inverse(e, (a - 1) * (b - 1))
+
+              log.success('p: \n' + hex(a))
+              log.success('q: \n' + hex(b))
+              log.success('d: \n' + hex(d))
+
+              p.sendlineafter(':', '3')
+              p.sendlineafter(':', str(d))
+
+
+              p.interactive()
+            </code>
+            </div>
+          </div>
+      </div>
+    </section>
+
+  </main>
+
+  <a href="#" class="back-to-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
+
+
+  <script src="../assets/vendor/aos/aos.js"></script>
+  <script src="../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="../assets/vendor/glightbox/js/glightbox.min.js"></script>
+  <script src="../assets/vendor/isotope-layout/isotope.pkgd.min.js"></script>
+  <script src="../assets/vendor/php-email-form/validate.js"></script>
+  <script src="../assets/vendor/purecounter/purecounter.js"></script>
+  <script src="../assets/vendor/swiper/swiper-bundle.min.js"></script>
+  <script src="../assets/vendor/typed.js/typed.min.js"></script>
+  <script src="../assets/vendor/waypoints/noframework.waypoints.js"></script>
+
+
+  <script src="../assets/js/main.js"></script>
+
+</body>
+
+</html>
