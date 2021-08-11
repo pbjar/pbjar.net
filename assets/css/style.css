@@ -328,7 +328,8 @@ section {
 
 .writeups .writeups-item {
   margin-bottom: 20px;
-  outline: 2px solid #890620;
+  border: 2px solid #890620;
+  border-radius: 22pt;
   width:  30%;
   margin: 1.6%;
 }
